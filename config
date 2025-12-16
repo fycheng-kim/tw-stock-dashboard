@@ -1,0 +1,5 @@
+# config file read by dotenv pkg
+
+# db
+SQLITE_DB_NAME=
+TABLE_NAME=
