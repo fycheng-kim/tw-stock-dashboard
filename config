@@ -3,3 +3,7 @@
 # db
 SQLITE_DB_NAME=
 TABLE_NAME=
+
+# data
+URL=https://api.finmindtrade.com/api/v4/data
+TOKEN=""
