@@ -1,9 +1,9 @@
 # config file read by dotenv pkg
 
 # db
-SQLITE_DB_NAME=
-TABLE_NAME=
+SQLITE_DB_NAME=stock_raw
+TABLE_NAME=stock_price
 
 # data
 URL=https://api.finmindtrade.com/api/v4/data
-TOKEN=""
+TOKEN=

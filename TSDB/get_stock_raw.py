@@ -37,11 +37,14 @@ def get_data_as_df(params: dict):
         df = pd.DataFrame(data['data'])
         logger.info(f"API Call succeed, get {df.shape[1]} records")
     else:
-        resp_msg = resp.json()["detail"][0]['msg']
+        if "detail" in resp.json():
+            resp_msg = resp.json()["detail"][0]['msg']
+        else:
+            resp_msg = resp.json()["msg"]
         err_msg = (f"API Call to {url} respond with code {resp_code}"
             f"params: {params}"
             f"error: {resp_msg}")
-        raise RespNot200Error(resp_msg)
+        raise RespNot200Error(err_msg)
     return df
 
 
@@ -52,15 +55,17 @@ def get_recent_txn_range(base_date: datetime = datetime.today(), n: int = -14):
     txn_dates = get_data_as_df(parameter) # early -> old
     dt_fmt = "%Y-%m-%d"
     base_date_str = base_date.strftime(dt_fmt)
-    if n == 0:
-        return base_date_str, base_date_str
     end_ind = txn_dates[txn_dates.date == base_date_str].index
     
     if end_ind.empty:
         err_msg = "Bad Base Date, choose another one"
         raise BadBaseDateError(err_msg)
+    
+    if n == 0:
+        return base_date_str, base_date_str
+    
     start_ind = end_ind.item() + n
-    # avoid lower or over than limit
+    # avoid lower or over limit
     start_ind = max(min(start_ind, txn_dates.shape[0]-1), 0)
     end_date = base_date_str
     start_date = txn_dates.loc[start_ind].values[0]
@@ -78,13 +83,12 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
         "end_date": end_date
     }
     logger.info(f"insert data with parameter: {parameter}")
-    
     if not stock_id_list:
         logger.warning("No stock_id_list provided")
     
     for stock_id in stock_id_list:
         parameter.update({"data_id": stock_id})
-        data = get_data_as_df(url, parameter)
+        data = get_data_as_df(parameter)
 
         if data.shape[0] == 0:
             logger.warning(f"no data found for {stock_id}")
@@ -94,9 +98,10 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
                 with sqlite.connect(sqlite_db_name) as conn:
                     # auto commit using with statement
                     cursor = conn.cursor()
-                    cursor.execute(f"delete from {table_name} where stock_id = {stock_id} "
-                                   f"and price_date>= {start_date} "
-                                   f"and price_date <= {end_date}")
+                    delete_q = (f"delete from {table_name} where stock_id = {stock_id} "
+                                   f"and price_date>= '{start_date}' "
+                                   f"and price_date <= '{end_date}' ")
+                    cursor.execute(delete_q)
                 
                 with sqlite.connect(sqlite_db_name) as conn:
                     # auto commit using with statement
@@ -112,15 +117,16 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
 
 
 if __name__ == '__main__':
-    # get recent 10 stock txn dates
-    start_date, end_date = get_recent_txn_range(n=-10)
+    # get this stock txn dates
+    start_date, end_date = get_recent_txn_range(n=0)
 
     # get todays stock list
     parameter = {
         "dataset": "TaiwanStockInfo",
     }
     stock_list = get_data_as_df(parameter)
-    SOI = stock_list[stock_list["industry_category"]=='半導體業']
+    SOI = stock_list[stock_list["industry_category"]=='半導體業'].stock_id.to_list()
+    
 
     # insert raw data into db
     insert_txn_summary_data(start_date, end_date, SOI)
