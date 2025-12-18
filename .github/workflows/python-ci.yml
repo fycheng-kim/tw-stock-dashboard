@@ -1,0 +1,32 @@
+name: Python CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # checkout your code
+      - uses: actions/checkout@v5
+      
+      # set up specific Python version
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      # install dependencies
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # run tests
+      - name: Run tests
+        run: pytest
