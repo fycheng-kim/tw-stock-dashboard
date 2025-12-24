@@ -1,3 +1,4 @@
+import argparse
 import requests
 import pandas as pd
 import sqlite3 as sqlite
@@ -112,21 +113,41 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
                 logger.error(f"Error while insert {stock_id} data into {table_name}"
                              f"error msg: {e}")
                 raise
-                
     logger.info("data succesefully insert")
 
 
 if __name__ == '__main__':
     # get this stock txn dates
-    start_date, end_date = get_recent_txn_range(n=0)
+    parser = argparse.ArgumentParser(
+                    prog='get_stock_raw',
+                    description='download stock data')
+    
+    parser.add_argument('ind_cat', help="industry category for stock")
+    
+    parser.add_argument('--base_date', help="base date to download file"
+                        "should be dates have stock transactions, default to today"
+                        "format: yyyy-mm-dd")
+    
+    parser.add_argument('-n', help="int, how many days to download from base_date, "
+                        "positive or negtive, default 0", default=0)
+
+    args = parser.parse_args()
+
+    if args.base_date:
+        base_date = datetime.strptime(args.base_date, "%Y-%m-%d")
+    else:
+        base_date = datetime.today()
+    n = args.n
+    ind_cat = args.ind_cat
+
+    start_date, end_date = get_recent_txn_range(base_date=base_date, n=n)
 
     # get todays stock list
     parameter = {
         "dataset": "TaiwanStockInfo",
     }
     stock_list = get_data_as_df(parameter)
-    SOI = stock_list[stock_list["industry_category"]=='半導體業'].stock_id.to_list()
+    SOI = stock_list[stock_list["industry_category"]==ind_cat].stock_id.to_list()
     
-
     # insert raw data into db
     insert_txn_summary_data(start_date, end_date, SOI)
