@@ -33,7 +33,7 @@ This project aims to predict if any stock’s price will rise over 5% within thr
     pip install requirements.txt
     ```
 
-2. upate config file
+2. update config file
     
     - SQLITE_DB_NAME: sqlite db name
     - TABLE_NAME: sqlite table name

@@ -13,32 +13,15 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report
 
-from .config import sqlite_db_name, table_name
+from .config import (
+    sqlite_db_name_feature, table_name_feature
+)
 
 logger = logging.getLogger(__name__)
 
 
 class NoDataError(Exception):
     pass
-
-def preprocess(df: pd.DataFrame):
-    df = df.sort_values(['stock_id', 'price_date'])
-
-    # Create target: +5% within 3 days
-    df['future_close'] = df.groupby('stock_id')['close_price'].shift(-3)
-    df['target'] = ((df['future_close'] - df['close_price']) / df['close_price'] >= 0.05) \
-        .astype(int)
-    # drop date without close date
-    df = df.dropna(subset=['future_close'])
-    df = df[df['close_price']!=0]
-    # simple features
-    df['ma5'] = df.groupby('stock_id')['close_price'].transform(lambda x: x.rolling(5).mean())
-    df['returns'] = df.groupby('stock_id')['close_price'].pct_change()
-    df = df.fillna(method='bfill').fillna(method='ffill')
-
-    features = [ 'open_price', 'max_price', 'min_price', 'close_price', 
-                'trading_volume', 'spread', 'trading_turnover', 'ma5', 'returns']
-    return df, features
 
 
 def create_sequences(group_df, window=10):
@@ -65,6 +48,15 @@ class StockLSTM(nn.Module):
 
 def train(df, features, window_size=10):
     scaler = StandardScaler()
+    
+    # Create target: +5% within 3 days
+    df['future_close'] = df.groupby('stock_id')['close_price'].shift(-3)
+    df['target'] = ((df['future_close'] - df['close_price']) / df['close_price'] >= 0.05) \
+        .astype(int)
+    # drop date without close date
+    df = df.dropna(subset=['future_close'])
+    df = df[df['close_price']!=0]
+    
     df[features] = scaler.fit_transform(df[features])
     
     logger.info("preparing sequence data")
@@ -132,11 +124,12 @@ def train(df, features, window_size=10):
 
 
 if __name__ == '__main__':
-    # Load data
-    read_sql_query = f"select * from {table_name}"
-    with sqlite.connect(sqlite_db_name) as conn:
+    read_sql_query = f"""select * from {table_name_feature} where price_date <= '2025-12-25'"""
+    
+    with sqlite.connect(sqlite_db_name_feature) as conn:
         df = pd.read_sql_query(read_sql_query, conn)
-    if df.shape[0] <10:
+    if df.shape[0] <= 10:
         raise NoDataError("No Data loaded from sqlitedb")
-    df, features = preprocess(df)
+    features = [ 'open_price', 'max_price', 'min_price', 'close_price', 
+             'trading_volume', 'spread', 'trading_turnover', 'ma5', 'returns' ]
     train(df, features, window_size=10)
