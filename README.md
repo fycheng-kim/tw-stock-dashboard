@@ -47,6 +47,8 @@ This project aims to predict if any stock’s price will rise over 5% within thr
     ```
 
 4. Download Raw Data
+
+    download data from findmind, store into sqlite db: <SQLITE_DB_NAME_RAW>.
     
     ```bash
     python -m TSDB.get_stock_raw -h
@@ -61,6 +63,32 @@ This project aims to predict if any stock’s price will rise over 5% within thr
 
     ```
 
-5. Train Model
+5. Preserver Model Features
 
-    ```TBD```
+    generate feature from raw data and store into sqlite db: <SQLITE_DB_NAME_FEATURE>.
+
+    ```bash
+    python -m TSDB.preserve_feature
+
+    # options:
+    # -h, --help            show this help message and exit
+    # --price_date PRICE_DATE
+    #                       date of the price, format: yyyy-mm-dd
+    # --stock_id STOCK_ID   the stock id
+    ```
+
+6. Update Model
+
+    train model base on features.
+
+    ```bash
+    python -m TSDB.train
+    ```
+
+7. predict
+    
+    predict from features, price_date is must
+
+    ```bash
+    python -m TSDB.infer <price_date>
+    ```
