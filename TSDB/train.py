@@ -19,6 +19,9 @@ from .config import (
 
 logger = logging.getLogger(__name__)
 
+features = [ 'open_price', 'max_price', 'min_price', 'close_price', 
+            'trading_volume', 'spread', 'trading_turnover', 'ma5', 'returns' ]
+
 
 class NoDataError(Exception):
     pass
@@ -124,12 +127,11 @@ def train(df, features, window_size=10):
 
 
 if __name__ == '__main__':
-    read_sql_query = f"""select * from {table_name_feature} where price_date <= '2025-12-25'"""
+    read_sql_query = f"""select * from {table_name_feature}"""
     
     with sqlite.connect(sqlite_db_name_feature) as conn:
         df = pd.read_sql_query(read_sql_query, conn)
     if df.shape[0] <= 10:
         raise NoDataError("No Data loaded from sqlitedb")
-    features = [ 'open_price', 'max_price', 'min_price', 'close_price', 
-             'trading_volume', 'spread', 'trading_turnover', 'ma5', 'returns' ]
+
     train(df, features, window_size=10)

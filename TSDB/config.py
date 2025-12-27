@@ -10,6 +10,7 @@ table_name_price = config.get("TABLE_NAME_PRICE", "stock_price")
 
 sqlite_db_name_feature = config.get("SQLITE_DB_NAME_FEATURE", "stock_feature") 
 table_name_feature = config.get("TABLE_NAME_FEATURE", "price_feature")
+table_name_prediction = config.get("TABLE_NAME_PREDICTION", "prediction")
 
 url = config.get("URL", "")
 TOKEN = config.get("TOKEN", "")
