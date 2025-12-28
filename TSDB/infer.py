@@ -8,7 +8,7 @@ import torch.nn as nn
 import logging
 
 from datetime import datetime
-from .train import features, StockLSTM
+from .train import FEATURES, StockLSTM
 from .config import (
     sqlite_db_name_feature, table_name_feature
 )
@@ -132,8 +132,10 @@ if __name__ == '__main__':
                              window_size=window_size,
                              threshold=0.7)
     predict = predict[predict.price_date == args.price_date]
+    
     if predict.shape[0]==0:
         logger.warning("No prediction add")
+    
     predict['predict_ts'] = datetime.now().strftime("%Y%m%d %H%M%S")
     predict['model_version'] = model_version
     result_table_name = 'prediction'

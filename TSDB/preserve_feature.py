@@ -19,7 +19,8 @@ def preprocess(df: pd.DataFrame):
     df = df.sort_values(['stock_id', 'price_date'])
     df = df[df['close_price']!=0]
     # simple features
-    df['ma5'] = df.groupby('stock_id')['close_price'].transform(lambda x: x.rolling(5).mean())
+    df['ma5'] = df.groupby('stock_id')['close_price'] \
+        .transform(lambda x: x.rolling(5).mean())
     df['returns'] = df.groupby('stock_id')['close_price'].pct_change()
     df = df.fillna(method='bfill').fillna(method='ffill')
 
@@ -54,7 +55,6 @@ if __name__ == '__main__':
     parser.add_argument('--stock_id', help="the stock id")
     args = parser.parse_args()
 
-
     # Load data
     read_sql_query = f"select * from {table_name_price} "
     condition = []
@@ -66,6 +66,7 @@ if __name__ == '__main__':
 
     with sqlite.connect(sqlite_db_name_raw) as conn:
         df = pd.read_sql_query(read_sql_query, conn)
+    
     if df.shape[0] == 0:
         raise NoDataError("No Data loaded from sqlitedb")
 
