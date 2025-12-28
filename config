@@ -1,8 +1,12 @@
 # config file read by dotenv pkg
 
 # db
-SQLITE_DB_NAME=stock_raw
-TABLE_NAME=stock_price
+SQLITE_DB_NAME_RAW=stock_raw
+TABLE_NAME_PRICE=stock_price
+TABLE_NAME_PREDICTION=prediction
+
+SQLITE_DB_NAME_FEATURE=stock_feature
+TABLE_NAME_feature=price_feature
 
 # data
 URL=https://api.finmindtrade.com/api/v4/data

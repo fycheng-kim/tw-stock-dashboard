@@ -5,13 +5,24 @@ class CriticalVairableNotSet(Exception):
 
 config = dotenv_values("./config")
 
-sqlite_db_name = config.get("SQLITE_DB_NAME", "stock_raw")
-table_name = config.get("TABLE_NAME", "stock_price")
+sqlite_db_name_raw = config.get("SQLITE_DB_NAME_RAW", "stock_raw")
+table_name_price = config.get("TABLE_NAME_PRICE", "stock_price")
+
+sqlite_db_name_feature = config.get("SQLITE_DB_NAME_FEATURE", "stock_feature") 
+table_name_feature = config.get("TABLE_NAME_FEATURE", "price_feature")
+table_name_prediction = config.get("TABLE_NAME_PREDICTION", "prediction")
+
 url = config.get("URL", "")
 TOKEN = config.get("TOKEN", "")
 
-if not sqlite_db_name :
-    raise CriticalVairableNotSet("sqlite_db_name")
+if not sqlite_db_name_raw :
+    raise CriticalVairableNotSet("sqlite_db_name_raw")
 
-if not table_name :
-    raise CriticalVairableNotSet("table_name")
+if not table_name_price :
+    raise CriticalVairableNotSet("table_name_price")
+
+if not sqlite_db_name_feature :
+    raise CriticalVairableNotSet("sqlite_db_name_feature")
+
+if not table_name_feature :
+    raise CriticalVairableNotSet("table_name_feature")

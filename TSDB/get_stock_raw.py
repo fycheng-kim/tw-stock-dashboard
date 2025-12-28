@@ -1,3 +1,4 @@
+import argparse
 import requests
 import pandas as pd
 import sqlite3 as sqlite
@@ -5,7 +6,7 @@ import sqlite3 as sqlite
 from datetime import datetime, timedelta
 from logging import getLogger
 
-from .config import url, sqlite_db_name, table_name, TOKEN
+from .config import url, sqlite_db_name_raw, table_name_price, TOKEN
 
 
 logger = getLogger(__name__)
@@ -56,14 +57,14 @@ def get_recent_txn_range(base_date: datetime = datetime.today(), n: int = -14):
     dt_fmt = "%Y-%m-%d"
     base_date_str = base_date.strftime(dt_fmt)
     end_ind = txn_dates[txn_dates.date == base_date_str].index
-    
+
     if end_ind.empty:
         err_msg = "Bad Base Date, choose another one"
         raise BadBaseDateError(err_msg)
-    
+
     if n == 0:
         return base_date_str, base_date_str
-    
+
     start_ind = end_ind.item() + n
     # avoid lower or over limit
     start_ind = max(min(start_ind, txn_dates.shape[0]-1), 0)
@@ -95,38 +96,58 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
         else:
             logger.info(f"got {data.shape[0]} records for {stock_id}")
             try:
-                with sqlite.connect(sqlite_db_name) as conn:
+                with sqlite.connect(sqlite_db_name_raw) as conn:
                     # auto commit using with statement
                     cursor = conn.cursor()
-                    delete_q = (f"delete from {table_name} where stock_id = {stock_id} "
+                    delete_q = (f"delete from {table_name_price} where stock_id = {stock_id} "
                                    f"and price_date>= '{start_date}' "
                                    f"and price_date <= '{end_date}' ")
                     cursor.execute(delete_q)
                 
-                with sqlite.connect(sqlite_db_name) as conn:
+                with sqlite.connect(sqlite_db_name_raw) as conn:
                     # auto commit using with statement
                     cursor = conn.cursor()
-                    cursor.executemany(f"""insert into {table_name} values (
+                    cursor.executemany(f"""insert into {table_name_price} values (
                                     {",".join(data.shape[1]*"?")})""", list(data.values))
             except Exception as e:
-                logger.error(f"Error while insert {stock_id} data into {table_name}"
+                logger.error(f"Error while insert {stock_id} data into {table_name_price}"
                              f"error msg: {e}")
                 raise
-                
     logger.info("data succesefully insert")
 
 
 if __name__ == '__main__':
     # get this stock txn dates
-    start_date, end_date = get_recent_txn_range(n=0)
+    parser = argparse.ArgumentParser(
+                    prog='get_stock_raw',
+                    description='download stock data')
+
+    parser.add_argument('ind_cat', help="industry category for stock")
+
+    parser.add_argument('--base_date', help="base date to download file"
+                        "should be dates have stock transactions, default to today"
+                        "format: yyyy-mm-dd")
+
+    parser.add_argument('-n', help="int, how many days to download from base_date, "
+                        "positive or negtive, default 0", default=0)
+
+    args = parser.parse_args()
+
+    if args.base_date:
+        base_date = datetime.strptime(args.base_date, "%Y-%m-%d")
+    else:
+        base_date = datetime.today()
+    n = args.n
+    ind_cat = args.ind_cat
+
+    start_date, end_date = get_recent_txn_range(base_date=base_date, n=n)
 
     # get todays stock list
     parameter = {
         "dataset": "TaiwanStockInfo",
     }
     stock_list = get_data_as_df(parameter)
-    SOI = stock_list[stock_list["industry_category"]=='半導體業'].stock_id.to_list()
-    
+    SOI = stock_list[stock_list["industry_category"]==ind_cat].stock_id.to_list()
 
     # insert raw data into db
     insert_txn_summary_data(start_date, end_date, SOI)
