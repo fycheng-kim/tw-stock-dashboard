@@ -2,6 +2,7 @@ import argparse
 import sqlite3  as sqlite
 import pandas as pd
 import logging
+from datetime import datetime
 
 from .config import (
     sqlite_db_name_raw, table_name_price, 
@@ -29,8 +30,9 @@ def preprocess(df: pd.DataFrame):
     return df, features
 
 
-def preserve_features(df: pd.DataFrame, sqlite_db_name: str, sqlite_table_name: str):
+def preserve_features(df: pd.DataFrame, sqlite_db_name: str, sqlite_table_name:str, price_date: str):
     cols = df.columns.values
+    df = df[df.price_date == price_date]
     for price_date, g in df.groupby('price_date'):
         with sqlite.connect(sqlite_db_name) as conn:
             # auto commit using with statement
@@ -59,8 +61,11 @@ if __name__ == '__main__':
     read_sql_query = f"select * from {table_name_price} "
     condition = []
     for k, v in vars(args).items():
-        if v:
-            condition.append(f" {k} = '{v}' ")
+        if v == 'price_date':
+            five_days_before = datetime.strptime(v, '%Y-%m-%d') - datetime.timedelta(days=5)
+            five_days_before = five_days_before.strftime('%Y-%m-%d')
+            condition.append(f" {k} <= '{v}' ")
+            condition.append(f" {k} >= '{five_days_before}' ")
     if condition:
         read_sql_query += f" where {'and'.join(condition)}"
 
@@ -71,4 +76,4 @@ if __name__ == '__main__':
         raise NoDataError("No Data loaded from sqlitedb")
 
     df, features = preprocess(df)
-    preserve_features(df, sqlite_db_name_feature, table_name_feature)
+    preserve_features(df, sqlite_db_name_feature, table_name_feature, args.price_date)
