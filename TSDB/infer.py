@@ -10,7 +10,8 @@ import logging
 from datetime import datetime
 from .train import FEATURES, StockLSTM
 from .config import (
-    sqlite_db_name_feature, table_name_feature
+    sqlite_db_name_feature, table_name_feature, 
+    sqlite_db_name_raw, table_name_stock_list
 )
 from pprint import pprint
 
@@ -145,6 +146,17 @@ if __name__ == '__main__':
         columns = ",".join(list(predict.columns))
         cursor.executemany(f"""insert into {result_table_name} ({columns}) values (
             {",".join(predict.shape[1]*"?")})""", list(predict.values))
-        a = cursor.execute(f"""select stock_id, price_date, prob from {result_table_name}
-                           where price_date = '{args.price_date}' and prob > 0.5 order by prob""").fetchall()
-        pprint(a)
+        # a = cursor.execute(f"""select stock_id, price_date, prob from {result_table_name}
+        #                    where price_date = '{args.price_date}' and prob > 0.5 order by prob""").fetchall()
+    with sqlite.connect(sqlite_db_name_raw) as conn:
+        stock_list = pd.read_sql_query(f"select * from {table_name_stock_list}", conn)
+    stock_list = stock_list.set_index("stock_id")
+    print(stock_list.head())
+    
+    a = predict.join(stock_list, how='left', on='stock_id') \
+        .drop_duplicates("stock_id") \
+        .query(f"price_date=='{args.price_date}'") \
+        .query("prob > 0.5") \
+        .sort_values(by='prob', ascending=False)
+    print_out_cols = ["stock_id", "stock_name", "type", "prob", "date"]
+    pprint(a[print_out_cols])
