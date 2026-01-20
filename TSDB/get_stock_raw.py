@@ -6,7 +6,9 @@ import sqlite3 as sqlite
 from datetime import datetime, timedelta
 from logging import getLogger
 
-from .config import url, sqlite_db_name_raw, table_name_price, TOKEN
+from .config import (
+    sqlite_db_name_raw, table_name_price, table_name_stock_list,
+    url, TOKEN)
 
 
 logger = getLogger(__name__)
@@ -116,6 +118,24 @@ def insert_txn_summary_data(start_date: datetime, end_date: datetime, stock_id_l
     logger.info("data succesefully insert")
 
 
+def write_stock_list(stock_list: pd.DataFrame):
+    try:
+        with sqlite.connect(sqlite_db_name_raw) as conn:
+            # auto commit using with statement
+            cursor = conn.cursor()
+            delete_q = (f"delete from {table_name_price} ")
+            cursor.execute(delete_q)
+        
+        with sqlite.connect(sqlite_db_name_raw) as conn:
+            # auto commit using with statement
+            cursor = conn.cursor()
+            cursor.executemany(f"""insert into {table_name_stock_list} values (
+                            {",".join(stock_list.shape[1]*"?")})""", list(stock_list.values))
+    except Exception as e:
+        logger.error(f"Error while insert data into {table_name_stock_list}"
+                        f"error msg: {e}")
+        raise
+
 if __name__ == '__main__':
     # get this stock txn dates
     parser = argparse.ArgumentParser(
@@ -147,6 +167,8 @@ if __name__ == '__main__':
         "dataset": "TaiwanStockInfo",
     }
     stock_list = get_data_as_df(parameter)
+    write_stock_list(stock_list)
+    
     SOI = stock_list[stock_list["industry_category"]==ind_cat].stock_id.to_list()
 
     # insert raw data into db

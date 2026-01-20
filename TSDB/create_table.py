@@ -6,7 +6,7 @@ from sqlite3 import OperationalError
 from .config import (
     sqlite_db_name_raw, table_name_price, 
     sqlite_db_name_feature, table_name_feature,
-    table_name_prediction
+    table_name_prediction, table_name_stock_list
 )
 
 logger = logging.getLogger(__name__)
@@ -62,3 +62,13 @@ create_prediction_table = f"""create table {table_name_prediction} (
         model_version string)
     """
 create_table(create_prediction_table, sqlite_db_name_feature)
+
+print(table_name_stock_list)
+create_stock_list_table = f"""create table {table_name_stock_list} (
+    industry_category string,
+    stock_id string,
+    stock_name string,
+    type string,
+    date date
+    )"""
+create_table(create_stock_list_table, sqlite_db_name_raw)
