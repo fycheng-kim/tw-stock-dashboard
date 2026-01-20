@@ -12,7 +12,7 @@ from .train import FEATURES, StockLSTM
 from .config import (
     sqlite_db_name_feature, table_name_feature
 )
-
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,6 @@ def get_data_within_window(window_size: int, db_name: str, price_date: str):
             where price_date <= '{price_date}'
         )
         where rn <= {window_size+1} """
-
     # predict
     with sqlite.connect(db_name) as conn:
         df = pd.read_sql_query(read_sql_query, conn)
@@ -111,24 +110,23 @@ def get_data_within_window(window_size: int, db_name: str, price_date: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-                    prog='preserve_feature',
+                    prog='infer',
                     description='preserve feature to db')
 
     parser.add_argument('price_date', help="date of the price, format: yyyy-mm-dd")
     args = parser.parse_args()
 
-    model_version = '20251227_172022_626731'
+    model_version = '20260106_222741_820283'
     results_path = f'./results/{model_version}'
     model, scaler = load_model_and_scaler(
-        f'{results_path}/stock_lstm_{model_version}.pth',
-        f'{results_path}/scaler_{model_version}.pkl',
-        len(features))
+        f'{results_path}/model.pth',
+        f'{results_path}/scaler.pkl',
+        len(FEATURES))
     window_size = 10
     
     df = get_data_within_window(window_size, sqlite_db_name_feature, args.price_date)
-
     predict = predict_on_new(df,
-                             model, scaler, features,
+                             model, scaler, FEATURES,
                              window_size=window_size,
                              threshold=0.7)
     predict = predict[predict.price_date == args.price_date]
@@ -144,5 +142,9 @@ if __name__ == '__main__':
         cursor = conn.cursor()
         cursor.execute(f"""delete from {result_table_name} where
             price_date = '{args.price_date}' and model_version = '{model_version}'""")
-        cursor.executemany(f"""insert into {result_table_name} values (
+        columns = ",".join(list(predict.columns))
+        cursor.executemany(f"""insert into {result_table_name} ({columns}) values (
             {",".join(predict.shape[1]*"?")})""", list(predict.values))
+        a = cursor.execute(f"""select stock_id, price_date, prob from {result_table_name}
+                           where price_date = '{args.price_date}' and prob > 0.5 order by prob""").fetchall()
+        pprint(a)
